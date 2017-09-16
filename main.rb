@@ -32,7 +32,7 @@ positions.each do |position|
   if open_orders_for_position.length == 0
     instrument = JSON.parse(RestClient.get(position["instrument"], robinhood_headers).body)
     average_buy_price = position["average_buy_price"].to_f
-    target_gain = ENV["TARGET_PERCENT_GAIN"].to_f / 100.00
+    target_gain = ENV["TARGET_PERCENT_GAIN"].to_f / 100.0
     limit_price = (average_buy_price * (1.0 + target_gain)).round(2)
 
     robinhood["orders/"].post({
