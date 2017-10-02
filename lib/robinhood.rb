@@ -23,19 +23,6 @@ class Robinhood
     end
   end
 
-  def buy(symbol, instrument, quantity)
-    secured_api_post("orders/", {
-      account: "https://api.robinhood.com/accounts/#{account_number}/",
-      instrument: instrument,
-      symbol: symbol,
-      type: "market",
-      trigger: "immediate",
-      quantity: quantity,
-      side: "buy",
-      time_in_force: "gtc"
-    })
-  end
-
   def cash
     @cash ||= account["buying_power"].to_f
   end
@@ -54,6 +41,33 @@ class Robinhood
 
   def last_price_for(symbol)
     unsecured_api_get("quotes/#{symbol}/")["last_trade_price"].to_f
+  end
+
+  def market_buy(symbol, instrument, quantity)
+    secured_api_post("orders/", {
+      account: "https://api.robinhood.com/accounts/#{account_number}/",
+      instrument: instrument,
+      symbol: symbol,
+      type: "market",
+      trigger: "immediate",
+      quantity: quantity,
+      price: last_price_for(symbol).round(2),
+      side: "buy",
+      time_in_force: "gtc"
+    })
+  end
+
+  def market_sell(symbol, instrument, quantity)
+    secured_api_post("orders/", {
+      account: "https://api.robinhood.com/accounts/#{account_number}/",
+      instrument: instrument,
+      symbol: symbol,
+      type: "market",
+      trigger: "immediate",
+      quantity: quantity,
+      side: "sell",
+      time_in_force: "gtc"
+    })
   end
 
   def open_orders_for(position)
@@ -76,24 +90,21 @@ class Robinhood
   end
 
   def secured_api_get(path)
-    JSON.parse(@api[path].get(@api_headers).body)
+    begin
+      response = @api[path].get(@api_headers).body
+      JSON.parse(response.body)
+    rescue => e
+      puts e.response.body
+    end
   end
 
   def secured_api_post(path, params)
-    JSON.parse(@api[path].post(params, @api_headers).body)
-  end
-
-  def sell(symbol, instrument, quantity)
-    secured_api_post("orders/", {
-      account: "https://api.robinhood.com/accounts/#{account_number}/",
-      instrument: instrument,
-      symbol: symbol,
-      type: "market",
-      trigger: "immediate",
-      quantity: quantity,
-      side: "sell",
-      time_in_force: "gtc"
-    })
+    begin
+      response = @api[path].post(params, @api_headers)
+      JSON.parse(response.body)
+    rescue => e
+      puts e.response.body
+    end
   end
 
   def unsecured_api_get(path)
