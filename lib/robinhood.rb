@@ -91,7 +91,7 @@ class Robinhood
 
   def secured_api_get(path)
     begin
-      response = @api[path].get(@api_headers).body
+      response = @api[path].get(@api_headers)
       JSON.parse(response.body)
     rescue => e
       puts e.response.body
@@ -108,6 +108,11 @@ class Robinhood
   end
 
   def unsecured_api_get(path)
-    JSON.parse(@api[path].get.body)
+    begin
+      response = @api[path].get
+      JSON.parse(response.body)
+    rescue => e
+      puts e.response.body
+    end
   end
 end
