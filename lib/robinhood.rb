@@ -36,7 +36,7 @@ class Robinhood
   end
 
   def instrument_for_symbol(symbol)
-    unsecured_api_get("instruments/#{symbol}/")["results"].first
+    unsecured_api_get("instruments/?symbol=#{symbol}")["results"].first
   end
 
   def last_price_for(symbol)
