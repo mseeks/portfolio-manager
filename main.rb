@@ -61,10 +61,10 @@ def rebalance(buy_list, sell_list, pass_count)
       buy_count = (cash_per_potential_buy / last_price).floor
 
       if buy_count > 0
-        puts "  BUY  #{buy_count} x #{symbol} @ #{formatted_last_price} ".bold.red + hold_message
+        puts "  BUY #{buy_count} x #{symbol} @ #{formatted_last_price} ".bold.red + hold_message
         @portfolio.market_buy(symbol, position["instrument"], buy_count)
 
-        puts " HOLD  #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
+        puts " HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
       else
         puts "  HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
       end
@@ -81,7 +81,7 @@ def rebalance(buy_list, sell_list, pass_count)
       buy_quantity = buy_orders.map{|o| o["quantity"].to_f.round }.reduce(0, :+)
       average_buy_price = Money.new(((buy_orders.map{|o| o["price"].to_f * o["quantity"].to_f.round }.reduce(0, :+) / buy_quantity).round(2) * 100).to_i, "USD").format
 
-      puts "  BUY  #{buy_quantity} x #{symbol} @ #{average_buy_price} ~".yellow
+      puts "  BUY #{buy_quantity} x #{symbol} @ #{average_buy_price} ~".yellow
     end
 
     if sell_orders.length > 0
@@ -98,7 +98,7 @@ def rebalance(buy_list, sell_list, pass_count)
     buy_count = (cash_per_potential_buy / last_price).floor
 
     if buy_count > 0
-      puts "  BUY  #{buy_count} x #{stock} @ #{formatted_last_price}".bold.red
+      puts "  BUY #{buy_count} x #{stock} @ #{formatted_last_price}".bold.red
       @portfolio.market_buy(stock, @portfolio.instrument_for_symbol(stock)["url"], buy_count)
     else
       puts "  STAY #{buy_count} x #{stock} @ #{formatted_last_price}".bold.blue
