@@ -61,7 +61,7 @@ def rebalance(buy_list, sell_list, pass_count)
       buy_count = (cash_per_potential_buy / last_price).floor
 
       if buy_count > 0
-        puts "  BUY #{buy_count} x #{symbol} @ #{formatted_last_price} ".bold.red + hold_message
+        puts "  BUY #{buy_count} x #{symbol} @ #{formatted_last_price} ".bold.red
         @portfolio.market_buy(symbol, position["instrument"], buy_count)
 
         puts " HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
