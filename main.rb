@@ -27,8 +27,8 @@ sell_list = sell_list.sort_by do |stock|
   portfolio.last_price_for(stock)
 end
 
-puts "BUY: ".bold.black + buy_list.join(", ")
-puts "SELL: ".bold.black + sell_list.join(", ")
+puts "SIGNALED BUY: ".bold.black + buy_list.join(", ")
+puts "SIGNALED SELL: ".bold.black + sell_list.join(", ")
 
 $stdout.flush
 
