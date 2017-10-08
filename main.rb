@@ -37,6 +37,9 @@ pass_count = 1
 def rebalance_sells(sell_list)
   return unless sell_list.length > 0
 
+  puts "\n"
+  puts "REBALANCE SELL: ".bold.black + sell_list.join(", ")
+
   portfolio = Robinhood.new
 
   portfolio.positions.each do |position|
@@ -83,7 +86,7 @@ def rebalance_buys(buy_list, pass_count)
   formatted_cash_per_potential_buy = format_money(cash_per_potential_buy)
 
   puts "\n"
-  puts "REBALANCE ##{pass_count}: ".bold.black + buy_list.join(", ") + " -> " + "#{formatted_cash_per_potential_buy}/BUY".bold.black
+  puts "REBALANCE BUY ##{pass_count}: ".bold.black + buy_list.join(", ") + " -> " + "#{formatted_cash_per_potential_buy}/BUY".bold.black
   pass_count = pass_count + 1
 
   account_number = portfolio.account["account_number"]
