@@ -24,7 +24,11 @@ class Robinhood
   end
 
   def cash
-    @cash ||= account["buying_power"].to_f
+    @cash ||= if ENV["TEST_CASH"].nil? || ENV["TEST_CASH"].empty?
+      account["buying_power"]
+    else
+      ENV["TEST_CASH"]
+    end.to_f
   end
 
   def current_instruments
@@ -44,6 +48,8 @@ class Robinhood
   end
 
   def market_buy(symbol, instrument, quantity)
+    return unless ENV["TEST_CASH"].nil? || ENV["TEST_CASH"].empty?
+
     secured_api_post("orders/", {
       account: "https://api.robinhood.com/accounts/#{account_number}/",
       instrument: instrument,
@@ -58,6 +64,8 @@ class Robinhood
   end
 
   def market_sell(symbol, instrument, quantity)
+    return unless ENV["TEST_CASH"].nil? || ENV["TEST_CASH"].empty?
+
     secured_api_post("orders/", {
       account: "https://api.robinhood.com/accounts/#{account_number}/",
       instrument: instrument,

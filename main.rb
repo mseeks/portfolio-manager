@@ -17,54 +17,96 @@ potential_securities.each do |potential_security|
   (query.macd > query.signal ? buy_list : sell_list) << potential_security
 end
 
-puts "BUY: ".bold.black + buy_list.sort.join(", ")
-puts "SELL: ".bold.black + sell_list.sort.join(", ")
+portfolio = Robinhood.new
+
+buy_list = buy_list.sort_by do |stock|
+  portfolio.last_price_for(stock)
+end
+
+sell_list = sell_list.sort_by do |stock|
+  portfolio.last_price_for(stock)
+end
+
+puts "BUY: ".bold.black + buy_list.join(", ")
+puts "SELL: ".bold.black + sell_list.join(", ")
+
+$stdout.flush
 
 pass_count = 1
 
-def rebalance(buy_list, sell_list, pass_count)
-  @portfolio = Robinhood.new
+def rebalance_sells(sell_list)
+  return unless sell_list.length > 0
 
-  return unless buy_list.length > 0
+  portfolio = Robinhood.new
 
-  buy_list = buy_list.sort_by do |stock|
-    @portfolio.last_price_for(stock)
+  portfolio.positions.each do |position|
+    open_orders = portfolio.open_orders_for(position)
+    instrument = portfolio.instrument_for_position(position)
+    symbol = instrument["symbol"]
+    last_price = portfolio.last_price_for(symbol)
+    quantity = position["quantity"].to_f.round
+
+    if sell_list.include?(symbol)
+      puts "  SELL #{quantity} x #{symbol} @ #{format_money(last_price)}".bold.green
+      portfolio.market_sell(symbol, position["instrument"], quantity)
+    end
+
+    sell_orders = open_orders.reject{|o| o["side"]!= "sell" }
+
+    if sell_orders.length > 0
+      sell_quantity = sell_orders.map{|o| o["quantity"].to_f.round }.reduce(0, :+)
+      average_sell_price = format_money(sell_orders.map{|o| o["price"].to_f * o["quantity"].to_f.round }.reduce(0, :+) / sell_quantity)
+
+      puts "  SELL #{sell_quantity} x #{symbol} @ #{average_sell_price} ~".yellow
+    end
   end
 
-  cash_per_potential_buy = (@portfolio.cash / buy_list.length).round(2)
+  $stdout.flush
+end
 
-  formatted_cash = Money.new((@portfolio.cash.round(2) * 100).to_i, "USD").format
-  formatted_cash_per_potential_buy = Money.new((cash_per_potential_buy.round(2) * 100).to_i, "USD").format
+def rebalance_buys(buy_list, pass_count)
+  return unless buy_list.length > 0
+
+  portfolio = Robinhood.new
+
+  cash_per_potential_buy = (portfolio.cash / buy_list.length).round(2)
+  return_early = if portfolio.last_price_for(buy_list.last) > cash_per_potential_buy
+    buy_list.pop
+    rebalance_buys(buy_list, pass_count)
+
+    true
+  end
+
+  return if return_early
+
+  formatted_cash = format_money(portfolio.cash)
+  formatted_cash_per_potential_buy = format_money(cash_per_potential_buy)
 
   puts "\n"
   puts "REBALANCE ##{pass_count}: ".bold.black + buy_list.join(", ") + " -> " + "#{formatted_cash_per_potential_buy}/BUY".bold.black
   pass_count = pass_count + 1
 
-  account_number = @portfolio.account["account_number"]
+  account_number = portfolio.account["account_number"]
 
   non_owned_buy_list = Array.new(buy_list)
 
-  @portfolio.positions.each do |position|
-    open_orders = @portfolio.open_orders_for(position)
-    instrument = @portfolio.instrument_for_position(position)
+  portfolio.positions.each do |position|
+    open_orders = portfolio.open_orders_for(position)
+    instrument = portfolio.instrument_for_position(position)
     symbol = instrument["symbol"]
-    last_price = @portfolio.last_price_for(symbol)
-    formatted_last_price = Money.new((last_price.round(2) * 100).to_i, "USD").format
+    last_price = portfolio.last_price_for(symbol)
+    formatted_last_price = format_money(last_price)
     quantity = position["quantity"].to_f.round
-    average_buy_price = Money.new((position["average_buy_price"].to_f.round(2) * 100).to_i, "USD").format
+    average_buy_price = format_money(position["average_buy_price"].to_f)
 
-    if sell_list.include?(symbol)
-      puts "  SELL #{quantity} x #{symbol} @ #{formatted_last_price}".bold.green
-
-      @portfolio.market_sell(symbol, position["instrument"], quantity)
-    elsif buy_list.include?(symbol)
+    if buy_list.include?(symbol)
       buy_count = (cash_per_potential_buy / last_price).floor
 
       if buy_count > 0
         puts "  BUY #{buy_count} x #{symbol} @ #{formatted_last_price} ".bold.red
-        @portfolio.market_buy(symbol, position["instrument"], buy_count)
+        portfolio.market_buy(symbol, position["instrument"], buy_count)
 
-        puts " HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
+        puts "  HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
       else
         puts "  HOLD #{quantity} x #{symbol} @ #{average_buy_price}".bold.blue unless quantity == 0
       end
@@ -75,31 +117,23 @@ def rebalance(buy_list, sell_list, pass_count)
     end
 
     buy_orders = open_orders.reject{|o| o["side"]!= "buy" }
-    sell_orders = open_orders.reject{|o| o["side"]!= "sell" }
 
     if buy_orders.length > 0
       buy_quantity = buy_orders.map{|o| o["quantity"].to_f.round }.reduce(0, :+)
-      average_buy_price = Money.new(((buy_orders.map{|o| o["price"].to_f * o["quantity"].to_f.round }.reduce(0, :+) / buy_quantity).round(2) * 100).to_i, "USD").format
+      average_buy_price = format_money(buy_orders.map{|o| o["price"].to_f * o["quantity"].to_f.round }.reduce(0, :+) / buy_quantity)
 
       puts "  BUY #{buy_quantity} x #{symbol} @ #{average_buy_price} ~".yellow
-    end
-
-    if sell_orders.length > 0
-      sell_quantity = sell_orders.map{|o| o["quantity"].to_f.round }.reduce(0, :+)
-      average_sell_price = Money.new(((sell_orders.map{|o| o["price"].to_f * o["quantity"].to_f.round }.reduce(0, :+) / sell_quantity).round(2) * 100).to_i, "USD").format
-
-      puts "  SELL #{sell_quantity} x #{symbol} @ #{average_sell_price} ~".yellow
     end
   end
 
   non_owned_buy_list.each do |stock|
-    last_price = @portfolio.last_price_for(stock)
-    formatted_last_price = Money.new((last_price.round(2) * 100).to_i, "USD").format
+    last_price = portfolio.last_price_for(stock)
+    formatted_last_price = format_money(last_price)
     buy_count = (cash_per_potential_buy / last_price).floor
 
     if buy_count > 0
       puts "  BUY #{buy_count} x #{stock} @ #{formatted_last_price}".bold.red
-      @portfolio.market_buy(stock, @portfolio.instrument_for_symbol(stock)["url"], buy_count)
+      portfolio.market_buy(stock, portfolio.instrument_for_symbol(stock)["url"], buy_count)
     else
       puts "  STAY #{buy_count} x #{stock} @ #{formatted_last_price}".bold.blue
     end
@@ -107,7 +141,14 @@ def rebalance(buy_list, sell_list, pass_count)
 
   buy_list.pop
 
-  rebalance(buy_list, sell_list, pass_count)
+  $stdout.flush
+
+  rebalance_buys(buy_list, pass_count)
 end
 
-rebalance(buy_list, sell_list, pass_count)
+def format_money(amount)
+  Money.new((amount.round(2) * 100).to_i, "USD").format
+end
+
+rebalance_sells(sell_list)
+rebalance_buys(buy_list, pass_count)
